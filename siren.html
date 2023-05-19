@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Police Siren</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 300px;
+            padding: 20px;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+
+        .container h1 {
+            text-align: center;
+        }
+
+        .container label {
+            margin-top: 10px;
+        }
+
+        .container button {
+            margin-top: 20px;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #007BFF;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .container button:disabled {
+            background: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Police Siren</h1>
+
+        <label for="chord1">Chord 1:</label>
+        <select id="chord1">
+            <option value="261.63,329.63,392.00">C Major</option>
+            <option value="277.18,349.23,415.30">C# Major</option>
+            <option value="293.66,369.99,440.00">D Major</option>
+            <option value="311.13,392.00,466.16">D# Major</option>
+            <option value="329.63,415.30,493.88">E Major</option>
+            <option value="349.23,440.00,523.25">F Major</option>
+            <option value="369.99,466.16,554.37">F# Major</option>
+            <option value="392.00,493.88,587.33">G Major</option>
+            <option value="415.30,523.25,622.25">G# Major</option>
+            <option value="440.00,554.37,659.26">A Major</option>
+            <option value="466.16,587.33,698.46">A# Major</option>
+            <option value="493.88,622.25,739.99">B Major</option>
+        </select>
+
+        <label for="chord2">Chord 2:</label>
+        <select id="chord2">
+            <option value="261.63,329.63,392.00">C Major</option>
+            <option value="277.18,349.23,415.30">C# Major</option>
+            <option value="293.66,369.99,440.00">D Major</option>
+            <option value="311.13,392.00,466.16">D# Major</option>
+            <option value="329.63,415.30,493.88">E Major</option>
+            <option value="349.23,440.00,523.25">F Major</option>
+            <option value="369.99,466.16,554.37">F# Major</option>
+            <option value="392.00,493.88,587.33">G Major</option>
+            <option value="415.30,523.25,622.25">G# Major</option>
+            <option value="440.00,554.37,659.26">A Major</option>
+            <option value="466.16,587.33,698.46">A# Major</option>
+            <option value="493.88,622.25,739.99">B Major</option>
+        </select>
+
+        <label for="duration">Duration (seconds):</label>
+        <input id="duration" type="number" value="10" min="1" />
+
+        <label for="color1">Color 1:</label>
+        <input id="color1" type="color" value="#FF0000" />
+
+        <label for="color2">Color 2:</label>
+        <input id="color2" type="color" value="#0000FF" />
+
+        <button id="startButton">Start Siren</button>
+        <button id="stopButton" disabled>Stop Siren</button>
+    </div>
+
+    <script>
+        let changeColorInterval, oscillators, isChord1Playing, durationTimeout;
+        const audioContext = new window.AudioContext();
+
+        // Function to start an oscillator at a given frequency
+        function startOscillator(frequency) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.type = 'triangle';
+            oscillator.frequency.value = frequency;
+            oscillator.connect(gainNode);
+
+            gainNode.connect(audioContext.destination);
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.1);
+
+            oscillator.start();
+
+            return { oscillator, gainNode };
+        }
+
+        // Function to stop an oscillator
+        function stopOscillator(oscillatorObj) {
+            oscillatorObj.gainNode.gain.setValueAtTime(1, audioContext.currentTime);
+            oscillatorObj.gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.1);
+            setTimeout(() => {
+                oscillatorObj.oscillator.stop();
+            }, 100);
+        }
+
+        // Function to start a "chord" (group of oscillators)
+        function startChord(frequencies) {
+            return frequencies.map(startOscillator);
+        }
+
+        document.getElementById('startButton').addEventListener('click', function() {
+            // Get the selected chord frequencies
+            const CHORD1 = document.getElementById('chord1').value.split(',').map(Number);
+            const CHORD2 = document.getElementById('chord2').value.split(',').map(Number);
+
+            // Get the duration from the input box
+            const duration = document.getElementById('duration').value * 1000;
+
+            // Get the colors from the input boxes
+            const COLOR1 = document.getElementById('color1').value;
+            const COLOR2 = document.getElementById('color2').value;
+
+            // Start first chord
+            oscillators = startChord(CHORD1);
+            document.body.style.backgroundColor = COLOR1;
+
+            // Flag to keep track of which chord is playing
+            isChord1Playing = true;
+
+            // Change chord and color every 500 ms to create a siren effect
+            changeColorInterval = setInterval(() => {
+                // Stop current oscillators
+                oscillators.forEach(stopOscillator);
+
+                // Start new chord with alternate frequencies
+                if (isChord1Playing) {
+                    oscillators = startChord(CHORD2);
+                    document.body.style.backgroundColor = COLOR2;
+                } else {
+                    oscillators = startChord(CHORD1);
+                    document.body.style.backgroundColor = COLOR1;
+                }
+
+                // Toggle flag for next iteration
+                isChord1Playing = !isChord1Playing;
+            }, 500);
+
+            // Enable the stop button
+            document.getElementById('stopButton').disabled = false;
+
+            // Stop oscillators after the specified duration and reset background color
+            durationTimeout = setTimeout(() => {
+                stopSiren();
+            }, duration);
+        });
+
+        document.getElementById('stopButton').addEventListener('click', stopSiren);
+
+        function stopSiren() {
+            if (changeColorInterval) {
+                clearInterval(changeColorInterval);
+            }
+
+            if (oscillators) {
+                oscillators.forEach(stopOscillator);
+            }
+
+            if (durationTimeout) {
+                clearTimeout(durationTimeout);
+            }
+
+            document.body.style.backgroundColor = '';
+            document.getElementById('stopButton').disabled = true;
+        }
+    </script>
+</body>
+</html>
